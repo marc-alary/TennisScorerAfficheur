@@ -33,9 +33,10 @@ e = espnow.ESPNow()
 #e.add_peer(emetteur)
 e.active(True)
 
-wavesymbol("8","red")
-wavesymbol("8","green")
-wavesymbol("8","blue")
+while None in e.recv(100): 
+    wavesymbol("8","red")
+    wavesymbol("8","green")
+    wavesymbol("8","blue")
 
 host='0'
 oldMsg="Rien"
