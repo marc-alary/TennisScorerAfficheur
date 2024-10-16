@@ -90,7 +90,6 @@ while True:
             value = msgSplit[1]
             userLum = msgSplit[2]
             if value != oldValue or color != oldColor or userLum != oldUserLum:
-                print("Update")
                 #lum = (userLum/3) * luxmeter()
                 lum = userLum
                 afficheur_set(value,color,lum)
