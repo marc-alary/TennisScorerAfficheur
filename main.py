@@ -69,34 +69,30 @@ while True:
     test = e.recv(100)
     #luminosite_auto()
     # Essai en cas de données incohérentes
-    try:
-        if None not in test :
-            print(test)
-            host, msg = test
-            msg = msg.decode("utf-8")
-            if msg != oldMsg:
-                if msg is "U":
-                    f = open("update.txt", "w")
-                    f.write("True")
-                    f.close()
-                    # Afficher U pour update en cours !
-                    afficheur_set("U","red",30)
-                    machine.reset()
-                oldMsg = msg
-                msgSplit = msg.split("-")
-                print(msgSplit)
-                color = msgSplit[0]
-                if color not in couleurs:
-                    color=oldColor
-                value = msgSplit[1]
-                userLum = msgSplit[2]
-                if value != oldValue or color != oldColor or userLum != oldUserLum:
-                    print("Update")
-                    lum = (userLum/3) * luxmeter()
-                    afficheur_set(value,color,lum)
-                oldValue = value
-                oldUserLum = userLum
-                oldColor = color
-    # Essai en cas de données incohérentes
-    except:
-        pass
+    if None not in test :
+        print(test)
+        host, msg = test
+        msg = msg.decode("utf-8")
+        if msg != oldMsg:
+            if msg is "U":
+                f = open("update.txt", "w")
+                f.write("True")
+                f.close()
+                # Afficher U pour update en cours !
+                afficheur_set("U","red",30)
+                machine.reset()
+            oldMsg = msg
+            msgSplit = msg.split("-")
+            print(msgSplit)
+            color = msgSplit[0]
+            if color not in couleurs:
+                color=oldColor
+            value = msgSplit[1]
+            userLum = msgSplit[2]
+            if value != oldValue or color != oldColor or userLum != oldUserLum:
+                print("Update")
+                lum = (userLum/3) * luxmeter()
+                afficheur_set(value,color,lum)
+            oldValue = value
+            oldUserLum = userLum
+            oldColor = color
