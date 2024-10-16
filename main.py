@@ -74,7 +74,7 @@ while True:
             host, msg = test
             msg = msg.decode("utf-8")
             if msg != oldMsg:
-                if msg is "U":
+                if "U" in msg:
                     f = open("update.txt", "w")
                     f.write("True")
                     f.close()
