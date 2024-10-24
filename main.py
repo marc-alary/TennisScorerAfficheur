@@ -1,4 +1,5 @@
 import network
+import math
 import espnow
 import time
 import machine
@@ -24,6 +25,19 @@ emetteur = b'\xb4\x8a\n\x8a0`'
 # Bus I2C pour capteur de luminosité
 i2c = I2C(0, scl=Pin(22), sda =Pin(21) , freq=400000) 
 
+def luxsensor():
+    clear_lsb = 0 #def variables de lecture du capteur
+    clear_msb = 0
+    try:
+        reading = i2c.readfrom(72,2)
+        clear_lsb = reading[1]
+        clear_msb = reading[0]
+        clear = (clear_msb << 6) + (clear_lsb >> 2) # Decalage des bits
+        lux = int(clear *(-100/1023) + 100) # Equation affine ajustement valeur mesurée
+    except:
+        lux=oldLux
+    return lux
+
 # A WLAN interface must be active to send()/recv()
 sta = network.WLAN(network.STA_IF)
 sta.active(True)
@@ -40,35 +54,19 @@ while None in e.recv(100):
 
 host='0'
 oldMsg="Rien"
-
-def luxmeter():
-    clear_lsb = 0 #def variables de lecture du capteur
-    clear_msb = 0
-    try:
-        reading = [clear_lsb , clear_msb]
-        reading = i2c.readfrom(72,2)
-        clear_lsb = reading[1]
-        clear_msb = reading[0]
-        clear = (clear_msb << 6) + (clear_lsb >> 2) # Decalage des bits
-        lux = clear * 1 + 0 # Equation affine ajustement valeur mesurée
-        #print ("clear", clear)
-    except:
-        lux=oldLux
-    return lux
-
-def luminosite_auto():
-    luxmeter()
-    lum = (userLum/3) * luxmeter()
-    afficheur_set(oldValue,oldColor,lum)
     
 print ("Afficheur V1.0 - 27-08-2024")
 
 lux = oldLux = 0
+lum = userLum = 3 
 
 while True:
-    test = e.recv(100)
-    #luminosite_auto()
+    ecart=math.fabs(luxsensor()-oldLux)
+    if  ecart > 5:
+        lum = (userLum/3) * luxsensor()
+        afficheur_set(value, color, lum)
     # Essai en cas de données incohérentes
+    test = e.recv(100)
     if None not in test :
         print(test)
         host, msg = test
@@ -90,8 +88,7 @@ while True:
             value = msgSplit[1]
             userLum = msgSplit[2]
             if value != oldValue or color != oldColor or userLum != oldUserLum:
-                #lum = (userLum/3) * luxmeter()
-                lum = userLum
+                lum = (userLum/3) * luxmeter()
                 afficheur_set(value,color,lum)
             oldValue = value
             oldUserLum = userLum
