@@ -1,3 +1,18 @@
+# Afficheur V5.0
+# Dernière mise à jour : 17/03/2025
+# Etat : ....................... En cours
+# Test hardware : .............. ok le 17-03-2025 
+# Capteur de luminsoité : ...... En cours
+# Bus I2C : .................... ok
+#  : ................... ok
+#  : .............. ok
+#  : ................................ ok
+#  : ........................... ok
+#  : ..................... ok
+#  : ..................... ok
+#  : ................... ok
+version = "17-03-2025" 
+
 import network
 import math
 import espnow
@@ -9,7 +24,6 @@ from animations import *
 
 # Adresse MAC de la carte
 #b'\xb4\x8a\n\x8a/\x9c'
-# Role de l'afficheur dans le système
 
 oldValue = 0
 oldLum = 0
@@ -33,10 +47,10 @@ def luxsensor():
         clear_lsb = reading[1]
         clear_msb = reading[0]
         clear = (clear_msb << 6) + (clear_lsb >> 2) # Decalage des bits
-        lux = int(clear *(-100/1023) + 100) # Equation affine ajustement valeur mesurée
+        ambLux = int(clear *(-100/1023) + 100) # Equation affine ajustement valeur mesurée
     except:
-        lux=oldLux
-    return lux
+        ambLux=oldLux
+    return ambLux
 
 # A WLAN interface must be active to send()/recv()
 sta = network.WLAN(network.STA_IF)
@@ -47,6 +61,8 @@ e = espnow.ESPNow()
 #e.add_peer(emetteur)
 e.active(True)
 
+# Attente de connexion du pupitre au démarrage
+# Wave rouge vert bleu en boucle
 while None in e.recv(100): 
     wavesymbol("8","red")
     wavesymbol("8","green")
@@ -55,16 +71,11 @@ while None in e.recv(100):
 host='0'
 oldMsg="Rien"
     
-print ("Afficheur V1.0 - 27-08-2024")
+print ("Afficheur V5.0 - " + version)
 
-lux = oldLux = 0
-lum = userLum = 3 
+lum = userLum = 3
 
 while True:
-    ecart=math.fabs(luxsensor()-oldLux)
-    if  ecart > 5:
-        lum = (userLum/3) * luxsensor()
-        afficheur_set(value, color, lum)
     # Essai en cas de données incohérentes
     test = e.recv(100)
     if None not in test :
@@ -88,7 +99,7 @@ while True:
             value = msgSplit[1]
             userLum = msgSplit[2]
             if value != oldValue or color != oldColor or userLum != oldUserLum:
-                lum = (userLum/3) * luxmeter()
+                lum = (int(userLum) * 100)/3
                 afficheur_set(value,color,lum)
             oldValue = value
             oldUserLum = userLum

@@ -43,18 +43,15 @@ sgE = NeoPixel(Pin(13, Pin.OUT), 8)
 sgF = NeoPixel(Pin(5, Pin.OUT), 8)
 sgG = NeoPixel(Pin(16, Pin.OUT), 8)
 
-luxSensor = 1
-userLux = 0
-
 couleurs = ["red","green","blue","cyan","purple","yellow","orange","pink"]
-def led_on(number,color,lux): #allumer la led pointée avec la couleur
+def led_on(number,color,luminosity): #allumer la led pointée avec la couleur
     #Palette de couleurs
     number=number-1
     if number>nombreTotalLeds:
         number=nombreTotalLeds
     if number<=0:
         number=0;
-    luminosity = int(lux)* luxSensor * ((10-int(userLux))*10)/100
+    # Pour le moment on n'utilise pas le capteur de luminosité
     if luminosity > 100:
         luminosity = 100
     if luminosity < 0:
