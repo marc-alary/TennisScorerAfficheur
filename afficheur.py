@@ -1,298 +1,243 @@
-# Afficheur V5.0
-# Date de création : 11/07/2024
-# Etat : En cours de rédaction
-# New : Chaque segment est commandé par une sortie indépendante
-# Informations :
-# Changement des sorties en fonction de la led choisie : ... ok
-# Fonctions : led_on / led_off : ........................... ok
-# Fonctions : segment_on / segment_off : ................... ok
-# Fonctions : afficheur_set / afficheur_off : .............. ok
-# Test hardware afficheur : ................................ ok
-# Fonctions : raw_on / raw_off : ........................... ok
-# Fonctions : column_on / column_off : ..................... ok
-# Fonctions : diag45_on / diag45_off : ..................... ok
-# Fonctions : diag270_on / diag270_off : ................... ok
-
 from machine import Pin
 from neopixel import NeoPixel
-from time import sleep
-from time import sleep_ms
-from machine import I2C, Pin
+from time import sleep, sleep_ms
 
-global nombreTotalLeds
-global segmentsAfficheur
-global ledsSegment
-global luminosity
+class Afficheur7Segments:
+    def __init__(self, segment_pins, segment_leds=8):
+        self.segment_labels = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+        self.segments = {
+            label: NeoPixel(Pin(pin, Pin.OUT), segment_leds)
+            for label, pin in zip(self.segment_labels, segment_pins)
+        }
+        self.segment_leds = segment_leds
+        self.total_leds = segment_leds * len(self.segment_labels)
 
-# Définition de la configuration de l'afficheur
-nombreLedsAfficheur = 56
-nombreLedsPoints = 0
-nombreTotalLeds = nombreLedsAfficheur + nombreLedsPoints #Nombre de leds
-segmentsAfficheur = 7 #Nombre de segment de l'afficheur
-segmentLeds=[8,8,8,8,8,8,8] #Nombre de leds par segment
+        self.char_map = {
+            '0': [1,1,1,1,1,1,0], '1': [0,1,1,0,0,0,0], '2': [1,1,0,1,1,0,1],
+            '3': [1,1,1,1,0,0,1], '4': [0,1,1,0,0,1,1], '5': [1,0,1,1,0,1,1],
+            '6': [1,0,1,1,1,1,1], '7': [1,1,1,0,0,0,0], '8': [1,1,1,1,1,1,1],
+            '9': [1,1,1,1,0,1,1], 'o': [0,0,1,1,1,0,1], 'c': [0,0,0,1,1,0,1],
+            'u': [0,0,1,1,1,0,0], '-': [0,0,0,0,0,0,1], 'n': [0,0,1,0,1,0,1],
+            'U': [0,1,1,1,1,1,0]
+        }
 
-# Cablage afficheur
-# Segment A : 33 - Segment B : 27 - Segment C : 26 - Segment D : 14
-# Segment E : 13 - Segment F : 5 - Segment G : 16 - Points : D7
-#pinWemos=[D4,D3,D2,D1,D7,D5,D8]
-sgA = NeoPixel(Pin(33, Pin.OUT), 8)
-sgB = NeoPixel(Pin(27, Pin.OUT), 8)
-sgC = NeoPixel(Pin(26, Pin.OUT), 8)
-sgD = NeoPixel(Pin(14, Pin.OUT), 8)
-sgE = NeoPixel(Pin(13, Pin.OUT), 8)
-sgF = NeoPixel(Pin(5, Pin.OUT), 8)
-sgG = NeoPixel(Pin(16, Pin.OUT), 8)
+        self.couleurs_rgb = {
+            "red": (255, 0, 0), "green": (0, 255, 0), "blue": (0, 0, 255),
+            "pink": (255, 0, 255), "yellow": (255, 120, 0), "cyan": (0, 255, 255),
+            "purple": (160, 32, 240), "orange": (255, 165, 0), "black": (0,0,0),
+            "default": (255, 0, 0)
+        }
 
-couleurs = ["red","green","blue","cyan","purple","yellow","orange","pink"]
-def led_on(number,color,luminosity): #allumer la led pointée avec la couleur
-    #Palette de couleurs
-    number=number-1
-    if number>nombreTotalLeds:
-        number=nombreTotalLeds
-    if number<=0:
-        number=0;
-    # Pour le moment on n'utilise pas le capteur de luminosité
-    if luminosity > 100:
-        luminosity = 100
-    if luminosity < 0:
-        luminosity = 0
-    if color=="blue":
-        rgv=[0,0,255]
-    elif color=="red":
-        rgv=[255,0,0]
-    elif color=="green":
-        rgv=[0,255,0]
-    elif color=="pink":
-        rgv=[255,0,255]
-    elif color=="yellow":
-        rgv=[255,120,0]
-    elif color=="cyan":
-        rgv=[0,255,255]
-    elif color=="purple":
-        rgv=[160,32,240]
-    elif color=="orange":
-        rgv=[255,165,0]
-    else :
-        rgv=[255,0,0] #rouge par defaut  
+    def _get_segment_and_index(self, number):
+        number -= 1
+        if number < 0 or number >= self.total_leds:
+            return None, None
+        segment_index = number // self.segment_leds
+        led_index = number % self.segment_leds
+        label = self.segment_labels[segment_index]
+        return label, led_index
 
-    if number>=0 and number<8:
-        sgA[number] = (int(rgv[0]*luminosity/100), int(rgv[1]*luminosity/100), int(rgv[2]*luminosity/100))
-        sgA.write()           
-    if number>=8 and number<16:
-        number=number-8
-        sgB[number] = (int(rgv[0]*luminosity/100), int(rgv[1]*luminosity/100), int(rgv[2]*luminosity/100))
-        sgB.write()
-    if number>=16 and number<24:
-        number=number-16
-        sgC[number] = (int(rgv[0]*luminosity/100), int(rgv[1]*luminosity/100), int(rgv[2]*luminosity/100))
-        sgC.write()
-    if number>=24 and number<32:
-        number=number-24
-        sgD[number] = (int(rgv[0]*luminosity/100), int(rgv[1]*luminosity/100), int(rgv[2]*luminosity/100))
-        sgD.write()
-    if number>=32 and number<40:
-        number=number-32
-        sgE[number] = (int(rgv[0]*luminosity/100), int(rgv[1]*luminosity/100), int(rgv[2]*luminosity/100))
-        sgE.write()
-    if number>=40 and number<48:
-        number=number-40
-        sgF[number] = (int(rgv[0]*luminosity/100), int(rgv[1]*luminosity/100), int(rgv[2]*luminosity/100))
-        sgF.write()
-    if number>=48 and number<56:
-        number=number-48
-        sgG[number] = (int(rgv[0]*luminosity/100), int(rgv[1]*luminosity/100), int(rgv[2]*luminosity/100))
-        sgG.write()
+    def led_on(self, number, color, luminosity):
+        color = self.couleurs_rgb.get(color, self.couleurs_rgb["default"])
+        luminosity = max(0, min(luminosity, 100))
+        scaled_color = tuple(int(c * luminosity / 100) for c in color)
 
-def led_off(number): #éteindre la led pointée
-    number=number-1
-    if number>nombreTotalLeds:
-        number=nombreTotalLeds
-    if number<=0:
-        number=0
-    if number>=0 and number<8:
-        sgA[number] = (0,0,0)
-        sgA.write()           
-    if number>=8 and number<16:
-        number=number-8
-        sgB[number] = (0,0,0)
-        sgB.write()
-    if number>=16 and number<24:
-        number=number-16
-        sgC[number] = (0,0,0)
-        sgC.write()
-    if number>=24 and number<32:
-        number=number-24
-        sgD[number] = (0,0,0)
-        sgD.write()
-    if number>=32 and number<40:
-        number=number-32
-        sgE[number] = (0,0,0)
-        sgE.write()
-    if number>=40 and number<48:
-        number=number-40
-        sgF[number] = (0,0,0)
-        sgF.write()
-    if number>=48 and number<56:
-        number=number-48
-        sgG[number] = (0,0,0)
-        sgG.write()
-    
+        seg, idx = self._get_segment_and_index(number)
+        if seg:
+            self.segments[seg][idx] = scaled_color
+            self.segments[seg].write()
 
-def segment_on(number,color,luminosity):
-    ledMin = ((number-1)*8)+1
-    ledMax = (number*8)+1
-    for led in range(ledMin, ledMax):
-        led_on(led,color,luminosity)
+    def led_off(self, number):
+        seg, idx = self._get_segment_and_index(number)
+        if seg:
+            self.segments[seg][idx] = (0, 0, 0)
+            self.segments[seg].write()
 
-def segment_off(number):
-    ledMin = ((number-1)*8)+1
-    ledMax = (number*8)+1
-    for led in range(ledMin,ledMax):
-        led_off(led)
- 
-def afficheur_off():
-    for segment in range(1,segmentsAfficheur+1):
-        segment_off(segment)
- 
-def afficheur_set(symbol,color,luminosity):
-    if symbol=="0":
-        septSeg=[1,1,1,1,1,1,0]
-    elif symbol=="1":
-        septSeg=[0,1,1,0,0,0,0]
-    elif symbol=="2":
-        septSeg=[1,1,0,1,1,0,1]
-    elif symbol=="3":
-        septSeg=[1,1,1,1,0,0,1]
-    elif symbol=="4":
-        septSeg=[0,1,1,0,0,1,1]
-    elif symbol=="5":
-        septSeg=[1,0,1,1,0,1,1]
-    elif symbol=="6":
-        septSeg=[1,0,1,1,1,1,1]
-    elif symbol=="7":
-        septSeg=[1,1,1,0,0,0,0]
-    elif symbol=="8":
-        septSeg=[1,1,1,1,1,1,1]
-    elif symbol=="9":
-        septSeg=[1,1,1,1,0,1,1]
-    elif symbol=="o":
-        septSeg=[0,0,1,1,1,0,1]
-    elif symbol=="c":
-        septSeg=[0,0,0,1,1,0,1]
-    elif symbol=="u":
-        septSeg=[0,0,1,1,1,0,0]
-    elif symbol=="-":
-        septSeg=[0,0,0,0,0,0,1]
-    elif symbol=="n":
-        septSeg=[0,0,1,0,1,0,1]
-    elif symbol=="U":
-        septSeg=[0,1,1,1,1,1,0]
-    else:
-        septSeg=[0,0,0,0,0,0,0]
-    for pointeur in range(0,segmentsAfficheur):
-        if septSeg[pointeur]==1:
-            segment_on(pointeur+1,color,luminosity)
-        elif septSeg[pointeur]==0:
-            segment_off(pointeur+1)
-        else:
-            segment_off(pointeur+1)
+    def segment_on(self, number, color, luminosity):
+        start = (number - 1) * self.segment_leds + 1
+        for i in range(start, start + self.segment_leds):
+            self.led_on(i, color, luminosity)
 
-def raw_on(y,color,luminosity):
-    if y==1:
-        segment_on(y,color,luminosity)
-    if y>1 and y<10:
-        led_on(y+7,color,luminosity)
-        led_on(50-y,color,luminosity)
-    if y==10:
-        segment_on(7,color,luminosity)
-    if y>10 and y<19:
-        led_on(y+6,color,luminosity)
-        led_on(51-y,color,luminosity)
-    if y==19:
-        segment_on(4,color,luminosity)      
+    def segment_off(self, number):
+        start = (number - 1) * self.segment_leds + 1
+        for i in range(start, start + self.segment_leds):
+            self.led_off(i)
 
-def raw_off(y):
-    if y==1:
-        segment_off(y)
-    elif y>1 and y<10:
-        led_off(y+7)
-        led_off(50-y)
-    elif y==10:
-        segment_off(7)
-    elif y>10 and y<19:
-        led_off(y+6)
-        led_off(51-y)
-    elif y==19:
-        segment_off(4) 
+    def afficheur_off(self):
+        for i in range(1, len(self.segment_labels) + 1):
+            self.segment_off(i)
 
-def column_on(x,color,luminosity):
-    if x==1:
-        segment_on(5,color,luminosity)
-        segment_on(6,color,luminosity)
-    elif x>1 and x<10:
-        led_on(x-1,color,luminosity)
-        led_on(47+x,color,luminosity)
-        led_on(34-x,color,luminosity)
-    elif x==10:
-        segment_on(2,color,luminosity)
-        segment_on(3,color,luminosity)
-        
-def column_off(x):
-    if x==1:
-        segment_off(5)
-        segment_off(6)
-    elif x>1 and x<10:
-        led_off(x-1)
-        led_off(x+47)
-        led_off(34-x)
-    elif x==10:
-        segment_off(2)
-        segment_off(3)        
+    def afficheur_set(self, symbol, color, luminosity):
+        pattern = self.char_map.get(symbol.lower(), [0] * 7)
+        for i, val in enumerate(pattern):
+            if val:
+                self.segment_on(i + 1, color, luminosity)
+            else:
+                self.segment_off(i + 1)
 
-def diag45_on(number, color,luminosity):
-    if number>=1 and number<=8:
-        led_on(number,color,luminosity)
-        led_on(49-number,color,luminosity)
-    if number>8 and number<17:
-        led_on(number,color,luminosity)
-        led_on(40+number,color,luminosity)
-        led_on(49-number,color,luminosity)
-    if number>=17 and number<=24:
-        led_on(number,color,luminosity)
-        led_on(49-number,color,luminosity)        
+    # -------- Méthodes supplémentaires --------
+    def raw_on(self, y, color, luminosity):
+        if y == 1:
+            self.segment_on(1, color, luminosity)
+        elif 1 < y < 10:
+            self.led_on(y + 7, color, luminosity)
+            self.led_on(50 - y, color, luminosity)
+        elif y == 10:
+            self.segment_on(7, color, luminosity)
+        elif 10 < y < 19:
+            self.led_on(y + 6, color, luminosity)
+            self.led_on(51 - y, color, luminosity)
+        elif y == 19:
+            self.segment_on(4, color, luminosity)
 
-def diag45_off(number):
-    if number>=1 and number<=8:
-        led_off(number)
-        led_off(49-number)
-    if number>8 and number<17:
-        led_off(number)
-        led_off(40+number)
-        led_off(49-number)
-    if number>=17 and number<=24:
-        led_off(number)
-        led_off(49-number)
-        
-def diag270_on(number, color,luminosity):
-    if number>=1 and number<=8:
-        led_on(9-number,color,luminosity)
-        led_on(number+8,color,luminosity)
-    if number>8 and number<17:
-        led_on(65-number,color,luminosity)
-        led_on(57-number,color,luminosity)
-        led_on(number+8,color,luminosity)
-    if number>=17 and number<=24:
-        led_on(57-number,color,luminosity)
-        led_on(number+8,color,luminosity)        
+    def raw_off(self, y):
+        if y == 1:
+            self.segment_off(1)
+        elif 1 < y < 10:
+            self.led_off(y + 7)
+            self.led_off(50 - y)
+        elif y == 10:
+            self.segment_off(7)
+        elif 10 < y < 19:
+            self.led_off(y + 6)
+            self.led_off(51 - y)
+        elif y == 19:
+            self.segment_off(4)
 
-def diag270_off(number):
-    if number>=1 and number<=8:
-        led_off(9-number)
-        led_off(number+8)
-    if number>8 and number<17:
-        led_off(65-number)
-        led_off(57-number)
-        led_off(number+8)
-    if number>=17 and number<=24:
-        led_off(57-number)
-        led_off(number+8)
+    def column_on(self, x, color, luminosity):
+        if x == 1:
+            self.segment_on(5, color, luminosity)
+            self.segment_on(6, color, luminosity)
+        elif 1 < x < 10:
+            self.led_on(x - 1, color, luminosity)
+            self.led_on(47 + x, color, luminosity)
+            self.led_on(34 - x, color, luminosity)
+        elif x == 10:
+            self.segment_on(2, color, luminosity)
+            self.segment_on(3, color, luminosity)
+
+    def column_off(self, x):
+        if x == 1:
+            self.segment_off(5)
+            self.segment_off(6)
+        elif 1 < x < 10:
+            self.led_off(x - 1)
+            self.led_off(47 + x)
+            self.led_off(34 - x)
+        elif x == 10:
+            self.segment_off(2)
+            self.segment_off(3)
+
+    def diag45_on(self, number, color, luminosity):
+        if 1 <= number <= 8:
+            self.led_on(number, color, luminosity)
+            self.led_on(49 - number, color, luminosity)
+        elif 8 < number < 17:
+            self.led_on(number, color, luminosity)
+            self.led_on(40 + number, color, luminosity)
+            self.led_on(49 - number, color, luminosity)
+        elif 17 <= number <= 24:
+            self.led_on(number, color, luminosity)
+            self.led_on(49 - number, color, luminosity)
+
+    def diag45_off(self, number):
+        if 1 <= number <= 8:
+            self.led_off(number)
+            self.led_off(49 - number)
+        elif 8 < number < 17:
+            self.led_off(number)
+            self.led_off(40 + number)
+            self.led_off(49 - number)
+        elif 17 <= number <= 24:
+            self.led_off(number)
+            self.led_off(49 - number)
+
+    def diag270_on(self, number, color, luminosity):
+        if 1 <= number <= 8:
+            self.led_on(number, color, luminosity)
+            self.led_on(49 - number, color, luminosity)
+        elif 8 < number < 17:
+            self.led_on(number, color, luminosity)
+            self.led_on(40 + number, color, luminosity)
+            self.led_on(49 - number, color, luminosity)
+        elif 17 <= number <= 24:
+            self.led_on(number, color, luminosity)
+            self.led_on(49 - number, color, luminosity)
+
+
+    def diag270_off(self, number):
+        if 1 <= number <= 8:
+            self.led_off(number)
+            self.led_off(49 - number)
+        elif 8 < number < 17:
+            self.led_off(number)
+            self.led_off(40 + number)
+            self.led_off(49 - number)
+        elif 17 <= number <= 24:
+            self.led_off(number)
+            self.led_off(49 - number)
+           
+    def wavesymbol(self, symbol, color, luminosity=80):
+        change = 10
+        while change <= luminosity:
+            self.afficheur_set(symbol, color, change)
+            change += 5
+        change = luminosity
+        while change >= 10:
+            self.afficheur_set(symbol, color, change)
+            change -= 5
+
+    def falldown(self, color, luminosity):
+        from time import sleep
+        tempo = 0.3
+        for raw in range(1, 20):
+            self.raw_on(raw, color, luminosity)
+            sleep(tempo)
+            self.raw_off(raw)
+            if raw in [2, 4]:
+                tempo -= 0.1
+            elif raw in [6]:
+                tempo -= 0.05
+            elif raw in [8, 10]:
+                tempo -= 0.01
+
+    def riseup(self, color, luminosity):
+        from time import sleep
+        tempo = 0.3
+        for raw in range(19, 0, -1):
+            self.raw_on(raw, color, luminosity)
+            sleep(tempo)
+            self.raw_off(raw)
+            if raw in [18, 16]:
+                tempo -= 0.1
+            elif raw in [14]:
+                tempo -= 0.05
+            elif raw in [11, 10]:
+                tempo -= 0.01             
+            
+    def diagdown(self, color="green", luminosity=80):
+        tempo = 0.3
+        for d in range(1, 25):  # De la diagonale 1 à 24
+            self.diag45_on(d, color, luminosity)
+            sleep(tempo)
+            self.diag45_off(d)
+            if d in [2, 4]:
+                tempo -= 0.1
+            elif d == 6:
+                tempo -= 0.05
+            elif d in [8, 10]:
+                tempo -= 0.01
+
+    def diagup(self, color="green", luminosity=80):
+        from time import sleep
+        tempo = 0.3
+        for d in range(24, 0, -1):  # De la diagonale 24 à 1
+            self.diag270_on(d, color, luminosity)
+            sleep(tempo)
+            self.diag270_off(d)
+            if d in [23, 21]:
+                tempo -= 0.1
+            elif d == 19:
+                tempo -= 0.05
+            elif d in [16, 14]:
+                tempo -= 0.01

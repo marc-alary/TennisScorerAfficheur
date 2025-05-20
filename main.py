@@ -11,16 +11,16 @@
 #  : ..................... ok
 #  : ..................... ok
 #  : ................... ok
-version = "17-03-2025" 
+version = "16-05-2025" 
 
 import network
 import math
 import espnow
 import time
 import machine
+from afficheur import Afficheur7Segments
 from machine import I2C, Pin, reset
-from afficheur import *
-from animations import *
+#from animations import *
 
 # Adresse MAC de la carte
 #b'\xb4\x8a\n\x8a/\x9c'
@@ -61,12 +61,17 @@ e = espnow.ESPNow()
 #e.add_peer(emetteur)
 e.active(True)
 
+segment_pins = [33, 27, 26, 14, 13, 5, 16]
+afficheur = Afficheur7Segments(segment_pins)
+
+afficheur.afficheur_off()
+
 # Attente de connexion du pupitre au démarrage
 # Wave rouge vert bleu en boucle
-while None in e.recv(100): 
-    wavesymbol("8","red")
-    wavesymbol("8","green")
-    wavesymbol("8","blue")
+while None in e.recv(100):
+    afficheur.wavesymbol("8","red",80)
+    afficheur.wavesymbol("8","green",80)
+    afficheur.wavesymbol("8","blue",80)
 
 host='0'
 oldMsg="Rien"
@@ -88,19 +93,19 @@ while True:
                 f.write("True")
                 f.close()
                 # Afficher U pour update en cours !
-                afficheur_set("U","red",30)
+                afficheur.afficheur_set("U","red",30)
                 machine.reset()
             oldMsg = msg
             msgSplit = msg.split("-")
             print(msgSplit)
             color = msgSplit[0]
-            if color not in couleurs:
+            if color not in afficheur.couleurs_rgb:
                 color=oldColor
             value = msgSplit[1]
             userLum = msgSplit[2]
             if value != oldValue or color != oldColor or userLum != oldUserLum:
                 lum = (int(userLum) * 100)/3
-                afficheur_set(value,color,lum)
+                afficheur.afficheur_set(value,color,lum)
             oldValue = value
             oldUserLum = userLum
             oldColor = color
